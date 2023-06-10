@@ -1,0 +1,4 @@
+Prefix_Zone_MSISDN,Prefix_Zone_DIALED,Total_Duration
+America1,Unknown,593760
+Unknown,Unknown,43270
+Unknown,America1,132200
