@@ -32,24 +32,29 @@ def kmp_table(pattern):
         pi[q] = k
     return pi
 
-def kmp_search(text, pattern):
+def kmp_search(text, prefixes_dict):
     matches = []
-    if not pattern:
+    if not prefixes_dict:
         return matches
 
-    prefix_table = compute_prefix_table(pattern)
-    q = 0  # индекс символа в образце
+    for prefix, zone in prefixes_dict.items():
+        prefix_table = compute_prefix_table(prefix)
+        q = 0  # индекс символа в образце
 
-    for i in range(len(text)):
-        while q > 0 and pattern[q] != text[i]:
-            q = prefix_table[q - 1]
+        for i in range(len(text)):
+            while q > 0 and prefix[q] != text[i]:
+                q = prefix_table[q - 1]
 
-        if pattern[q] == text[i]:
-            q += 1
+            if prefix[q] == text[i]:
+                q += 1
 
-        if q == len(pattern):
-            matches.append(i - len(pattern) + 1)
-            q = prefix_table[q - 1]
+            if q == len(prefix):
+                matches.append((zone, i - len(prefix) + 1))
+                q = prefix_table[q - 1]
+
+    # Отладочные выводы
+    print("Text:", text)
+    print("Matches:", matches)
 
     return matches
 
@@ -71,6 +76,12 @@ with open(prefixes_file, "r") as file:
             # Если префиксная зона новая, создаем новую запись
             prefixes[zone] = prefixes_list
 
+# Создание словаря prefixes_dict
+prefixes_dict = {}
+for zone, prefixes_list in prefixes.items():
+    for prefix in prefixes_list:
+        prefixes_dict[prefix] = zone
+
 # Инициализация словаря для хранения статистики длительности соединений
 volume_stats = {}
 
@@ -89,26 +100,18 @@ for filename in os.listdir(cdr_directory):
             msisdn = row[5]
             dialed = row[6]
 
-            msisdn_zone = "Unknown"
-            dialed_zone = "Unknown"
+            msisdn_zone = ''
+            dialed_zone = ''
 
-            # Поиск префиксной зоны для MSISDN и DIALED
-            for zone, prefixes_list in prefixes.items():
-                prefixes_str = "|".join(prefixes_list)
-
-                # Поиск префиксной зоны для MSISDN
-                matches = kmp_search(msisdn, prefixes_str)
-                if matches:
-                    longest_match_index = max(matches, key=lambda x: len(msisdn[x:x + len(prefixes_str)]))
-                    longest_match = msisdn[longest_match_index:longest_match_index + len(prefixes_str)]
+            # Поиск префиксной зоны для MSISDN
+            for prefix, zone in prefixes_dict.items():
+                if msisdn.startswith(prefix):
                     msisdn_zone = zone
                     break
 
-                # Поиск префиксной зоны для DIALED
-                matches = kmp_search(dialed, prefixes_str)
-                if matches:
-                    longest_match_index = max(matches, key=lambda x: len(dialed[x:x + len(prefixes_str)]))
-                    longest_match = dialed[longest_match_index:longest_match_index + len(prefixes_str)]
+            # Поиск префиксной зоны для DIALED
+            for prefix, zone in prefixes_dict.items():
+                if dialed.startswith(prefix):
                     dialed_zone = zone
                     break
 
